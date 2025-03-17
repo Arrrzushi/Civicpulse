@@ -1,6 +1,15 @@
 import Web3 from "web3";
 import { apiRequest } from "./queryClient";
 
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string }) => Promise<string[]>;
+      selectedAddress?: string;
+    };
+  }
+}
+
 export async function connectWallet(): Promise<string> {
   if (!window.ethereum) {
     throw new Error("Please install MetaMask to use this application");
