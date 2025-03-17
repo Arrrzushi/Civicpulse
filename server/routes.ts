@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
 import { insertComplaintSchema, insertUserSchema } from "@shared/schema";
+import { validateLegalComplaint } from "./services/validation";
 
 export async function registerRoutes(app: Express) {
   const httpServer = createServer(app);
@@ -16,7 +17,24 @@ export async function registerRoutes(app: Express) {
   app.post("/api/complaints", async (req, res) => {
     const result = insertComplaintSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ message: "Invalid complaint data" });
+      return res.status(400).json({ 
+        message: "Invalid complaint data",
+        errors: result.error.errors 
+      });
+    }
+
+    // Validate the complaint using AI
+    const validation = await validateLegalComplaint(
+      result.data.title,
+      result.data.description,
+      result.data.category
+    );
+
+    if (!validation.isValid) {
+      return res.status(400).json({ 
+        message: "Invalid legal complaint",
+        reason: validation.reason
+      });
     }
 
     const complaint = await storage.createComplaint(result.data);
