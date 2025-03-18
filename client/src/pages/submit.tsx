@@ -13,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Loader2 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Upload, Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const categories = [
   { value: "workplace", label: "Workplace Harassment" },
@@ -23,10 +25,21 @@ const categories = [
   { value: "other", label: "Other Legal Matter" }
 ];
 
+const privacyOptions = [
+  { value: "private", label: "Private (Only visible to you)" },
+  { value: "public", label: "Public (Visible to community)" },
+  { value: "legal", label: "Legal Filing (Stored on blockchain)" }
+];
+
 export default function Submit() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    urgency?: string;
+    privacy?: string;
+    analysis?: string;
+  } | null>(null);
 
   // Check for MetaMask
   if (typeof window.ethereum === "undefined") {
@@ -60,6 +73,8 @@ export default function Submit() {
       category: "",
       location: "",
       evidenceHash: "",
+      privacy: "public",
+      urgency: "medium",
       walletAddress: window.ethereum?.selectedAddress || ""
     }
   });
@@ -168,6 +183,43 @@ export default function Submit() {
                           className="min-h-[150px]"
                           {...field}
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {aiSuggestions && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="mt-2 space-y-2">
+                        <p><strong>AI Analysis:</strong> {aiSuggestions.analysis}</p>
+                        <p><strong>Suggested Privacy:</strong> {aiSuggestions.privacy}</p>
+                        <p><strong>Suggested Urgency:</strong> {aiSuggestions.urgency}</p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="privacy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Privacy Setting</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="grid gap-4 md:grid-cols-3"
+                        >
+                          {privacyOptions.map((option) => (
+                            <RadioGroupItem key={option.value} value={option.value}>
+                              <FormLabel>{option.label}</FormLabel>
+                            </RadioGroupItem>
+                          ))}
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -6,6 +6,9 @@ const openai = new OpenAI();
 export async function validateLegalComplaint(title: string, description: string, category: string): Promise<{
   isValid: boolean;
   reason?: string;
+  analysis?: string;
+  suggestedUrgency?: string;
+  suggestedPrivacy?: string;
 }> {
   try {
     const response = await openai.chat.completions.create({
@@ -13,11 +16,18 @@ export async function validateLegalComplaint(title: string, description: string,
       messages: [
         {
           role: "system",
-          content: "You are a legal complaint validator. Analyze the complaint and determine if it's a valid legal grievance. Respond with JSON containing isValid (boolean) and reason (string)."
+          content: `You are a legal complaint validator and advisor. Analyze the complaint and provide:
+1. Validity assessment
+2. Detailed analysis
+3. Suggested urgency level (high/medium/low)
+4. Suggested privacy setting (private/public/legal)
+5. Brief reason for your assessment
+
+Respond with JSON containing all these fields.`
         },
         {
           role: "user",
-          content: `Please validate this legal complaint:
+          content: `Please analyze this complaint:
             Title: ${title}
             Category: ${category}
             Description: ${description}`
@@ -29,7 +39,10 @@ export async function validateLegalComplaint(title: string, description: string,
     const result = JSON.parse(response.choices[0].message.content);
     return {
       isValid: result.isValid,
-      reason: result.reason
+      reason: result.reason,
+      analysis: result.analysis,
+      suggestedUrgency: result.suggestedUrgency,
+      suggestedPrivacy: result.suggestedPrivacy
     };
   } catch (error) {
     console.error('Validation error:', error);

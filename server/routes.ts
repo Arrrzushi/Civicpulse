@@ -37,7 +37,13 @@ export async function registerRoutes(app: Express) {
       });
     }
 
-    const complaint = await storage.createComplaint(result.data);
+    const complaint = await storage.createComplaint({
+      ...result.data,
+      aiAnalysis: validation.analysis,
+      urgency: validation.suggestedUrgency || "medium",
+      privacy: validation.suggestedPrivacy || result.data.privacy || "public"
+    });
+
     await storage.updateUserTokens(result.data.walletAddress, 10);
     res.json(complaint);
   });

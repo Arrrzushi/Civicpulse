@@ -10,6 +10,9 @@ export const complaints = pgTable("complaints", {
   location: text("location"),
   evidenceHash: text("evidence_hash").notNull(),
   status: text("status").notNull().default("pending"),
+  privacy: text("privacy").notNull().default("public"),
+  urgency: text("urgency").notNull().default("medium"),
+  aiAnalysis: text("ai_analysis"),
   walletAddress: text("wallet_address").notNull(),
   assignedTo: text("assigned_to"),
   donations: integer("donations").notNull().default(0),
@@ -30,6 +33,7 @@ export const insertComplaintSchema = createInsertSchema(complaints).omit({
   createdAt: true,
   donations: true,
   assignedTo: true,
+  aiAnalysis: true,
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
