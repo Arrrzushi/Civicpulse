@@ -6,8 +6,11 @@ export const complaints = pgTable("complaints", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  type: text("type").notNull().default("community"), // 'community' or 'legal'
   category: text("category").notNull(),
   location: text("location"),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
   evidenceHash: text("evidence_hash").notNull(),
   status: text("status").notNull().default("pending"),
   privacy: text("privacy").notNull().default("public"),

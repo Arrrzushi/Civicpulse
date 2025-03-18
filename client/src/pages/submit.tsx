@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -14,15 +14,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Upload, Loader2, AlertCircle } from "lucide-react";
+import { Upload, Loader2, AlertCircle, MapPin } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Map } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-const categories = [
+const legalCategories = [
   { value: "workplace", label: "Workplace Harassment" },
   { value: "property", label: "Property Dispute" },
   { value: "consumer", label: "Consumer Rights" },
   { value: "discrimination", label: "Discrimination" },
   { value: "other", label: "Other Legal Matter" }
+];
+
+const communityCategories = [
+  { value: "infrastructure", label: "Infrastructure Issues" },
+  { value: "sanitation", label: "Sanitation Problems" },
+  { value: "safety", label: "Safety Concerns" },
+  { value: "noise", label: "Noise Complaints" },
+  { value: "other", label: "Other Community Issues" }
 ];
 
 const privacyOptions = [
@@ -35,6 +46,9 @@ export default function Submit() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
+  const [map, setMap] = useState<Map | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [complaintType, setComplaintType] = useState<"community" | "legal">("community");
   const [aiSuggestions, setAiSuggestions] = useState<{
     urgency?: string;
     privacy?: string;
@@ -50,7 +64,7 @@ export default function Submit() {
             <div className="text-center">
               <h2 className="text-2xl font-bold text-red-600 mb-4">MetaMask Required</h2>
               <p className="text-gray-600 mb-4">
-                Please install MetaMask to submit legal complaints. MetaMask is required for secure authentication and transaction signing.
+                Please install MetaMask to submit complaints. MetaMask is required for secure authentication and transaction signing.
               </p>
               <Button
                 onClick={() => window.open("https://metamask.io/download/", "_blank")}
@@ -70,8 +84,11 @@ export default function Submit() {
     defaultValues: {
       title: "",
       description: "",
+      type: complaintType,
       category: "",
       location: "",
+      latitude: "",
+      longitude: "",
       evidenceHash: "",
       privacy: "public",
       urgency: "medium",
@@ -79,22 +96,51 @@ export default function Submit() {
     }
   });
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const L = require('leaflet');
+      const container = document.getElementById('map');
+
+      if (container && !map) {
+        const newMap = L.map(container).setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(newMap);
+
+        newMap.on('click', (e: any) => {
+          const { lat, lng } = e.latlng;
+          setSelectedLocation({ lat, lng });
+          form.setValue('latitude', lat.toString());
+          form.setValue('longitude', lng.toString());
+        });
+
+        setMap(newMap);
+      }
+    }
+  }, []);
+
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!window.ethereum?.selectedAddress) {
         throw new Error("Please connect your wallet first");
       }
 
-      return await apiRequest("POST", "/api/complaints", {
+      const formData = {
         ...data,
         evidenceHash: evidenceUrl || "placeholder",
-        walletAddress: window.ethereum.selectedAddress
-      });
+        walletAddress: window.ethereum.selectedAddress,
+        type: complaintType
+      };
+
+      if (selectedLocation) {
+        formData.latitude = selectedLocation.lat.toString();
+        formData.longitude = selectedLocation.lng.toString();
+      }
+
+      return await apiRequest("POST", "/api/complaints", formData);
     },
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Legal complaint submitted successfully! You earned 10 Civic Tokens.",
+        description: `${complaintType === 'legal' ? 'Legal complaint' : 'Community issue'} submitted successfully! You earned 10 Civic Tokens.`,
       });
       navigate("/feed");
     },
@@ -119,7 +165,7 @@ export default function Submit() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -127,161 +173,166 @@ export default function Submit() {
       >
         <Card>
           <CardHeader>
-            <CardTitle>File a Legal Complaint</CardTitle>
+            <CardTitle>Submit a Complaint</CardTitle>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => submitMutation.mutate(data))} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Brief title of your complaint..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <Tabs defaultValue="community" onValueChange={(value) => setComplaintType(value as "community" | "legal")}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="community">Community Issue</TabsTrigger>
+                <TabsTrigger value="legal">Legal Complaint</TabsTrigger>
+              </TabsList>
 
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((data) => submitMutation.mutate(data))} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
+                          <Input placeholder="Brief title of your complaint..." {...field} />
                         </FormControl>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.value} value={category.value}>
-                              {category.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Detailed description of your legal complaint..."
-                          className="min-h-[150px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(complaintType === 'legal' ? legalCategories : communityCategories).map((category) => (
+                              <SelectItem key={category.value} value={category.value}>
+                                {category.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                {aiSuggestions && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      <div className="mt-2 space-y-2">
-                        <p><strong>AI Analysis:</strong> {aiSuggestions.analysis}</p>
-                        <p><strong>Suggested Privacy:</strong> {aiSuggestions.privacy}</p>
-                        <p><strong>Suggested Urgency:</strong> {aiSuggestions.urgency}</p>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder={`Detailed description of your ${complaintType === 'legal' ? 'legal complaint' : 'community issue'}...`}
+                            className="min-h-[150px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {aiSuggestions && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <div className="mt-2 space-y-2">
+                          <p><strong>AI Analysis:</strong> {aiSuggestions.analysis}</p>
+                          <p><strong>Suggested Privacy:</strong> {aiSuggestions.privacy}</p>
+                          <p><strong>Suggested Urgency:</strong> {aiSuggestions.urgency}</p>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-4">
+                    <FormLabel>Location</FormLabel>
+                    <div id="map" className="w-full h-[300px] rounded-lg mb-4"></div>
+                    {selectedLocation && (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <MapPin className="w-4 h-4" />
+                        <span>Location selected: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}</span>
                       </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="privacy"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Privacy Setting</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="grid gap-4 md:grid-cols-3"
-                        >
-                          {privacyOptions.map((option) => (
-                            <RadioGroupItem key={option.value} value={option.value}>
-                              <FormLabel>{option.label}</FormLabel>
-                            </RadioGroupItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Where did this occur?" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="space-y-4">
-                  <FormLabel>Evidence Documents</FormLabel>
-                  <div className="flex items-center justify-center w-full">
-                    <label className="w-full cursor-pointer">
-                      <div className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg hover:bg-gray-50 transition-colors">
-                        {evidenceUrl ? (
-                          <div className="w-full h-full p-4">
-                            <p className="text-sm text-green-600 text-center">
-                              ✓ Evidence document uploaded
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <Upload className="w-8 h-8 text-gray-400" />
-                            <p className="mt-2 text-sm text-gray-500">
-                              Click or drag evidence documents to upload
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.doc,.docx,image/*"
-                        onChange={handleFileChange}
-                      />
-                    </label>
+                    )}
                   </div>
-                </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={submitMutation.isPending}
-                >
-                  {submitMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Submit Legal Complaint
-                </Button>
-              </form>
-            </Form>
+                  <FormField
+                    control={form.control}
+                    name="privacy"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Privacy Setting</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="grid gap-4 md:grid-cols-3"
+                          >
+                            {privacyOptions.map((option) => (
+                              <div key={option.value} className="flex items-center space-x-2">
+                                <RadioGroupItem value={option.value} id={option.value} />
+                                <FormLabel htmlFor={option.value}>{option.label}</FormLabel>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="space-y-4">
+                    <FormLabel>Evidence Documents</FormLabel>
+                    <div className="flex items-center justify-center w-full">
+                      <label className="w-full cursor-pointer">
+                        <div className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg hover:bg-gray-50 transition-colors">
+                          {evidenceUrl ? (
+                            <div className="w-full h-full p-4">
+                              <p className="text-sm text-green-600 text-center">
+                                ✓ Evidence document uploaded
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Upload className="w-8 h-8 text-gray-400" />
+                              <p className="mt-2 text-sm text-gray-500">
+                                Click or drag evidence documents to upload
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,image/*"
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={submitMutation.isPending}
+                  >
+                    {submitMutation.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Submit {complaintType === 'legal' ? 'Legal Complaint' : 'Community Issue'}
+                  </Button>
+                </form>
+              </Form>
+            </Tabs>
           </CardContent>
         </Card>
       </motion.div>

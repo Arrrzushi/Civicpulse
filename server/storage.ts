@@ -7,11 +7,12 @@ export interface IStorage {
   createComplaint(complaint: InsertComplaint): Promise<Complaint>;
   updateComplaintStatus(id: number, status: string): Promise<Complaint | undefined>;
   addDonation(id: number, amount: number): Promise<Complaint | undefined>;
-  
+
   // Users
   getUser(walletAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserTokens(walletAddress: string, amount: number): Promise<User | undefined>;
+  updateUserStats(walletAddress: string, stats: Partial<User>): Promise<User | undefined>;
   getLeaderboard(): Promise<User[]>;
 }
 
@@ -50,7 +51,7 @@ export class MemStorage implements IStorage {
   async updateComplaintStatus(id: number, status: string): Promise<Complaint | undefined> {
     const complaint = this.complaints.get(id);
     if (!complaint) return undefined;
-    
+
     const updated = { ...complaint, status };
     this.complaints.set(id, updated);
     return updated;
@@ -59,7 +60,7 @@ export class MemStorage implements IStorage {
   async addDonation(id: number, amount: number): Promise<Complaint | undefined> {
     const complaint = this.complaints.get(id);
     if (!complaint) return undefined;
-    
+
     const updated = { ...complaint, donations: complaint.donations + amount };
     this.complaints.set(id, updated);
     return updated;
@@ -75,7 +76,8 @@ export class MemStorage implements IStorage {
       ...user,
       tokens: 0,
       complaintsSubmitted: 0,
-      donationsMade: 0,
+      casesResolved: 0,
+      isLegalProfessional: false,
     };
     this.users.set(user.walletAddress, newUser);
     return newUser;
@@ -84,8 +86,17 @@ export class MemStorage implements IStorage {
   async updateUserTokens(walletAddress: string, amount: number): Promise<User | undefined> {
     const user = this.users.get(walletAddress);
     if (!user) return undefined;
-    
+
     const updated = { ...user, tokens: user.tokens + amount };
+    this.users.set(walletAddress, updated);
+    return updated;
+  }
+
+  async updateUserStats(walletAddress: string, stats: Partial<User>): Promise<User | undefined> {
+    const user = this.users.get(walletAddress);
+    if (!user) return undefined;
+
+    const updated = { ...user, ...stats };
     this.users.set(walletAddress, updated);
     return updated;
   }
