@@ -83,7 +83,14 @@ const complaintContractABI = [
   }
 ];
 
-const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS || "";
+const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+
+function getWeb3() {
+  if (!window.ethereum) {
+    throw new Error("Please install MetaMask to use this application");
+  }
+  return new Web3(window.ethereum);
+}
 
 export async function connectWallet(): Promise<string> {
   if (!window.ethereum) {
@@ -110,23 +117,27 @@ export async function submitComplaintToBlockchain(
   description: string,
   evidenceHash: string
 ): Promise<void> {
-  if (!window.ethereum) {
-    throw new Error("Please install MetaMask");
+  if (!contractAddress) {
+    throw new Error("Contract address not configured");
   }
 
-  const web3 = new Web3(window.ethereum);
+  const web3 = getWeb3();
   const contract = new web3.eth.Contract(complaintContractABI as any, contractAddress);
+
+  if (!window.ethereum?.selectedAddress) {
+    throw new Error("Please connect your wallet first");
+  }
 
   await contract.methods.submitComplaint(title, description, evidenceHash)
     .send({ from: window.ethereum.selectedAddress });
 }
 
 export async function getComplaintFromBlockchain(id: number) {
-  if (!window.ethereum) {
-    throw new Error("Please install MetaMask");
+  if (!contractAddress) {
+    throw new Error("Contract address not configured");
   }
 
-  const web3 = new Web3(window.ethereum);
+  const web3 = getWeb3();
   const contract = new web3.eth.Contract(complaintContractABI as any, contractAddress);
 
   return await contract.methods.getComplaint(id).call();
@@ -135,5 +146,3 @@ export async function getComplaintFromBlockchain(id: number) {
 export function shortenAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
-
-export const web3 = new Web3(window.ethereum);
