@@ -17,9 +17,7 @@ export default function ConnectWallet() {
       if (!isAuthenticated) {
         await new Promise((resolve) => {
           authClient.login({
-            identityProvider: process.env.NODE_ENV === "development"
-              ? "http://localhost:4943?canisterId=rwlgt-iiaaa-aaaaa-aaaaa-cai"
-              : "https://identity.ic0.app",
+            identityProvider: "https://identity.ic0.app",
             onSuccess: resolve,
           });
         });

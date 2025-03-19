@@ -18,7 +18,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload, Loader2, AlertCircle, MapPin } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Map } from 'leaflet';
+// Import Leaflet as ES module
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const legalCategories = [
@@ -73,15 +74,14 @@ export default function Submit() {
   });
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const L = require('leaflet');
+    if (typeof window !== 'undefined' && !map) {
       const container = document.getElementById('map');
 
-      if (container && !map) {
+      if (container) {
         const newMap = L.map(container).setView([0, 0], 2);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(newMap);
 
-        newMap.on('click', (e: any) => {
+        newMap.on('click', (e) => {
           const { lat, lng } = e.latlng;
           setSelectedLocation({ lat, lng });
           form.setValue('latitude', lat.toString());
@@ -89,6 +89,11 @@ export default function Submit() {
         });
 
         setMap(newMap);
+
+        // Cleanup
+        return () => {
+          newMap.remove();
+        };
       }
     }
   }, []);
