@@ -24,42 +24,47 @@ export async function registerRoutes(app: Express) {
     }
 
     let complaint;
-    if (result.data.type === 'legal') {
-      // Validate the complaint using AI for legal complaints
-      const validation = await validateLegalComplaint(
-        result.data.title,
-        result.data.description,
-        result.data.category
-      );
+    try {
+      if (result.data.type === 'legal') {
+        // Validate the complaint using AI for legal complaints
+        const validation = await validateLegalComplaint(
+          result.data.title,
+          result.data.description,
+          result.data.category
+        );
 
-      if (!validation.isValid) {
-        return res.status(400).json({ 
-          message: "Invalid legal complaint",
-          reason: validation.reason
+        if (!validation.isValid) {
+          return res.status(400).json({ 
+            message: "Invalid legal complaint",
+            reason: validation.reason
+          });
+        }
+
+        complaint = await storage.createComplaint({
+          ...result.data,
+          aiAnalysis: validation.analysis,
+          urgency: validation.suggestedUrgency || "medium",
+          privacy: validation.suggestedPrivacy || result.data.privacy || "public"
+        });
+      } else {
+        // For community complaints, create without validation
+        complaint = await storage.createComplaint(result.data);
+      }
+
+      // Update user tokens and complaints submitted count
+      const user = await storage.getUser(result.data.walletAddress);
+      if (user) {
+        await storage.updateUserTokens(result.data.walletAddress, 10);
+        await storage.updateUserStats(result.data.walletAddress, {
+          complaintsSubmitted: user.complaintsSubmitted + 1
         });
       }
 
-      complaint = await storage.createComplaint({
-        ...result.data,
-        aiAnalysis: validation.analysis,
-        urgency: validation.suggestedUrgency || "medium",
-        privacy: validation.suggestedPrivacy || result.data.privacy || "public"
-      });
-    } else {
-      // For community complaints, create without validation
-      complaint = await storage.createComplaint(result.data);
+      res.json(complaint);
+    } catch (error) {
+        console.error('Error submitting complaint:', error);
+        res.status(500).json({ message: "Failed to submit complaint" });
     }
-
-    // Update user tokens and complaints submitted count
-    const user = await storage.getUser(result.data.walletAddress);
-    if (user) {
-      await storage.updateUserTokens(result.data.walletAddress, 10);
-      await storage.updateUserStats(result.data.walletAddress, {
-        complaintsSubmitted: user.complaintsSubmitted + 1
-      });
-    }
-
-    res.json(complaint);
   });
 
   // Get or create user

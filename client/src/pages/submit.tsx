@@ -190,7 +190,22 @@ export default function Submit() {
               </TabsList>
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => submitMutation.mutate(data))} className="space-y-6">
+                <form onSubmit={form.handleSubmit(async (data) => {
+  try {
+    await submitMutation.mutateAsync(data);
+    toast({
+      title: "Success",
+      description: "Complaint submitted successfully",
+    });
+  } catch (error) {
+    console.error('Submit error:', error);
+    toast({
+      title: "Error",
+      description: "Failed to submit complaint. Please try again.",
+      variant: "destructive"
+    });
+  }
+})} className="space-y-6">
                   <FormField
                     control={form.control}
                     name="title"
