@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { insertComplaintSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { submitComplaintToBlockchain } from "@/lib/web3";
+import { submitComplaint } from "@/lib/icp";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -56,30 +56,6 @@ export default function Submit() {
     analysis?: string;
   } | null>(null);
 
-  // Check for MetaMask
-  if (typeof window.ethereum === "undefined") {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">MetaMask Required</h2>
-              <p className="text-gray-600 mb-4">
-                Please install MetaMask to submit complaints. MetaMask is required for secure authentication and transaction signing.
-              </p>
-              <Button
-                onClick={() => window.open("https://metamask.io/download/", "_blank")}
-                className="bg-primary"
-              >
-                Install MetaMask
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const form = useForm({
     resolver: zodResolver(insertComplaintSchema),
     defaultValues: {
@@ -93,7 +69,6 @@ export default function Submit() {
       evidenceHash: "",
       privacy: "public",
       urgency: "medium",
-      walletAddress: window.ethereum?.selectedAddress || ""
     }
   });
 
@@ -120,14 +95,9 @@ export default function Submit() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
-      if (!window.ethereum?.selectedAddress) {
-        throw new Error("Please connect your wallet first");
-      }
-
       const formData = {
         ...data,
         evidenceHash: evidenceUrl || "placeholder",
-        walletAddress: window.ethereum.selectedAddress,
         type: complaintType
       };
 
@@ -140,23 +110,31 @@ export default function Submit() {
         // Submit to our backend first
         const response = await apiRequest("POST", "/api/complaints", formData);
 
-        // If it's a legal complaint, also store it on the blockchain
+        // If it's a legal complaint, also store it on ICP
         if (complaintType === 'legal') {
-          await submitComplaintToBlockchain(
-            formData.title,
-            formData.description,
-            formData.evidenceHash
-          );
+          await submitComplaint({
+            title: formData.title,
+            description: formData.description,
+            category: formData.category,
+            location: formData.location,
+            latitude: formData.latitude || "",
+            longitude: formData.longitude || "",
+            evidenceHash: formData.evidenceHash,
+            privacy: formData.privacy,
+            urgency: formData.urgency,
+            aiAnalysis: aiSuggestions?.analysis
+          });
+
           toast({
-            title: "Blockchain Transaction",
-            description: "Complaint has been stored on the blockchain",
+            title: "ICP Transaction",
+            description: "Complaint has been stored on the Internet Computer",
           });
         }
 
         return response;
       } catch (error) {
-        if (error.message.includes("MetaMask")) {
-          throw new Error("Please ensure MetaMask is connected and try again");
+        if (error.message.includes("Internet Identity")) {
+          throw new Error("Please ensure you're connected with Internet Identity and try again");
         }
         throw error;
       }

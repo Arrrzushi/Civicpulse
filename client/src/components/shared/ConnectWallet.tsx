@@ -1,20 +1,39 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { connectWallet, shortenAddress } from "@/lib/web3";
 import { useToast } from "@/hooks/use-toast";
+import { AuthClient } from "@dfinity/auth-client";
+import { Principal } from "@dfinity/principal";
 
 export default function ConnectWallet() {
-  const [address, setAddress] = useState<string | null>(null);
+  const [principal, setPrincipal] = useState<Principal | null>(null);
   const { toast } = useToast();
 
   const connectMutation = useMutation({
-    mutationFn: connectWallet,
-    onSuccess: (address) => {
-      setAddress(address);
+    mutationFn: async () => {
+      const authClient = await AuthClient.create();
+      const isAuthenticated = await authClient.isAuthenticated();
+
+      if (!isAuthenticated) {
+        await new Promise((resolve) => {
+          authClient.login({
+            identityProvider: process.env.NODE_ENV === "development"
+              ? "http://localhost:4943?canisterId=rwlgt-iiaaa-aaaaa-aaaaa-cai"
+              : "https://identity.ic0.app",
+            onSuccess: resolve,
+          });
+        });
+      }
+
+      const identity = authClient.getIdentity();
+      const principal = identity.getPrincipal();
+      return principal;
+    },
+    onSuccess: (principal) => {
+      setPrincipal(principal);
       toast({
         title: "Connected",
-        description: "Wallet connected successfully",
+        description: "Successfully connected with Internet Identity",
       });
     },
     onError: (error: Error) => {
@@ -26,10 +45,10 @@ export default function ConnectWallet() {
     },
   });
 
-  if (address) {
+  if (principal) {
     return (
       <Button variant="outline">
-        {shortenAddress(address)}
+        {principal.toString().slice(0, 6)}...{principal.toString().slice(-4)}
       </Button>
     );
   }
@@ -39,7 +58,7 @@ export default function ConnectWallet() {
       onClick={() => connectMutation.mutate()}
       disabled={connectMutation.isPending}
     >
-      {connectMutation.isPending ? "Connecting..." : "Connect Wallet"}
+      {connectMutation.isPending ? "Connecting..." : "Connect with II"}
     </Button>
   );
 }
