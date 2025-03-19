@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { insertComplaintSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { submitComplaintToBlockchain } from "@/lib/web3";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -135,7 +136,30 @@ export default function Submit() {
         formData.longitude = selectedLocation.lng.toString();
       }
 
-      return await apiRequest("POST", "/api/complaints", formData);
+      try {
+        // Submit to our backend first
+        const response = await apiRequest("POST", "/api/complaints", formData);
+
+        // If it's a legal complaint, also store it on the blockchain
+        if (complaintType === 'legal') {
+          await submitComplaintToBlockchain(
+            formData.title,
+            formData.description,
+            formData.evidenceHash
+          );
+          toast({
+            title: "Blockchain Transaction",
+            description: "Complaint has been stored on the blockchain",
+          });
+        }
+
+        return response;
+      } catch (error) {
+        if (error.message.includes("MetaMask")) {
+          throw new Error("Please ensure MetaMask is connected and try again");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
@@ -230,7 +254,7 @@ export default function Submit() {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             placeholder={`Detailed description of your ${complaintType === 'legal' ? 'legal complaint' : 'community issue'}...`}
                             className="min-h-[150px]"
                             {...field}
@@ -320,8 +344,8 @@ export default function Submit() {
                     </div>
                   </div>
 
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="w-full"
                     disabled={submitMutation.isPending}
                   >
