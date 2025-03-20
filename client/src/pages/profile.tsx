@@ -8,25 +8,33 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Coins, FileText, CheckCircle } from 'lucide-react';
 
 export default function Profile() {
-  const [address, setAddress] = useState<string | null>(null);
+  const [principal, setPrincipal] = useState<string | null>(null);
 
   useEffect(() => {
-    setAddress(window.ethereum?.selectedAddress || null);
+    const checkAuth = async () => {
+      const authClient = await AuthClient.create();
+      if (await authClient.isAuthenticated()) {
+        const identity = authClient.getIdentity();
+        setPrincipal(identity.getPrincipal().toString());
+      }
+    };
+    checkAuth();
   }, []);
 
   const { data: user, isLoading } = useQuery({
-    queryKey: ['user', address],
-    queryFn: () => apiRequest('GET', `/api/users/${address}`),
-    enabled: !!address
+    queryKey: ['user', principal],
+    queryFn: () => apiRequest('GET', `/api/users/${principal}`),
+    enabled: !!principal
   });
 
-  if (!address) {
+  if (!principal) {
     return (
       <div className="max-w-4xl mx-auto p-4">
         <Card>
           <CardContent className="p-6">
             <div className="text-center">
-              <p className="text-lg text-gray-600">Please connect your wallet to view your profile.</p>
+              <p className="text-lg text-gray-600">Please connect with Internet Identity to view your profile.</p>
+              <ConnectWallet />
             </div>
           </CardContent>
         </Card>

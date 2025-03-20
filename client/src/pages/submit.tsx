@@ -100,15 +100,19 @@ export default function Submit() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
-      if (!window.ethereum?.selectedAddress) {
-        throw new Error("Please connect your wallet first");
+      const authClient = await AuthClient.create();
+      if (!authClient.isAuthenticated()) {
+        throw new Error("Please connect with Internet Identity first");
       }
+      
+      const identity = authClient.getIdentity();
+      const principal = identity.getPrincipal().toString();
       
       const formData = {
         ...data,
         evidenceHash: evidenceUrl || "placeholder",
         type: complaintType,
-        walletAddress: window.ethereum.selectedAddress
+        walletAddress: principal
       };
 
       try {
