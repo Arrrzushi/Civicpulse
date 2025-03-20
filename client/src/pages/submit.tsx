@@ -100,18 +100,18 @@ export default function Submit() {
 
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
+      if (!window.ethereum?.selectedAddress) {
+        throw new Error("Please connect your wallet first");
+      }
+      
       const formData = {
         ...data,
         evidenceHash: evidenceUrl || "placeholder",
         type: complaintType,
-        walletAddress: window.ethereum?.selectedAddress
+        walletAddress: window.ethereum.selectedAddress
       };
 
       try {
-        // Connect wallet if not connected
-        if (!window.ethereum?.selectedAddress) {
-          await connectWallet(); // Assumes connectWallet function exists
-        }
 
         // Submit to our backend first
         const response = await apiRequest("POST", "/api/complaints", formData);
