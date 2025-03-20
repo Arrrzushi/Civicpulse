@@ -66,7 +66,7 @@ export default function Profile() {
         <CardHeader>
           <CardTitle className="flex items-center gap-4">
             <Avatar className="h-12 w-12">
-              <AvatarFallback>{address.slice(0, 2).toUpperCase()}</AvatarFallback>
+              <AvatarFallback>{principal?.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             Profile
           </CardTitle>
@@ -74,8 +74,8 @@ export default function Profile() {
         <CardContent>
           <div className="space-y-6">
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-500">Wallet Address</h3>
-              <p className="font-mono text-sm">{address}</p>
+              <h3 className="text-sm font-medium text-gray-500">Principal ID</h3>
+              <p className="font-mono text-sm">{principal}</p>
             </div>
             
             <div className="flex items-center gap-2">
