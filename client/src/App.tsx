@@ -33,6 +33,7 @@ function App() {
         </main>
       </div>
       <Toaster />
+      <AiChat />
     </QueryClientProvider>
   );
 }

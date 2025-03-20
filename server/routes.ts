@@ -113,6 +113,39 @@ export async function registerRoutes(app: Express) {
   // Add donation to complaint
   app.post("/api/complaints/:id/donate", async (req, res) => {
     const { amount, walletAddress } = req.body;
+
+
+  // AI Chat endpoint
+  app.post("/api/chat", async (req, res) => {
+    const { message } = req.body;
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a helpful assistant for CivicChain, a platform for submitting and managing community complaints and legal issues. 
+            Key features include:
+            - Submit community issues or legal complaints
+            - Track complaint status
+            - Earn tokens for participation
+            - Donate tokens to support causes
+            - Community leaderboard
+            
+            Keep responses concise and friendly. Guide users on how to use the platform effectively.`
+          },
+          { role: "user", content: message }
+        ]
+      });
+
+      res.json({ message: response.choices[0].message.content });
+    } catch (error) {
+      console.error('Chat error:', error);
+      res.status(500).json({ message: "Failed to process chat message" });
+    }
+  });
+
+
     if (typeof amount !== "number" || amount <= 0) {
       return res.status(400).json({ message: "Invalid donation amount" });
     }
