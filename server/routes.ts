@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer } from "http";
+import { openai } from "./services/openai";
 import { storage } from "./storage";
 import { insertComplaintSchema, insertUserSchema } from "@shared/schema";
 import { validateLegalComplaint } from "./services/validation";

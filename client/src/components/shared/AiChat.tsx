@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
@@ -78,10 +77,10 @@ export default function AiChat() {
                   }`}
                 >
                   <div
-                    className={`p-3 rounded-lg ${
+                    className={`p-3 rounded-lg backdrop-blur-sm ${
                       msg.role === "assistant"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
+                        ? "bg-primary/20 text-primary border border-primary/30"
+                        : "bg-white/10 border border-white/20"
                     }`}
                   >
                     {msg.content}

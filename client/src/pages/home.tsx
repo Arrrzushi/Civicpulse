@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, FileText, Trophy, ArrowRight } from "lucide-react";
+import Background3D from '@/components/shared/Background3D';
 
 export default function Home() {
   const features = [
@@ -23,8 +24,9 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen">
-      <section className="relative overflow-hidden">
+    <div className="relative overflow-hidden">
+      <Background3D />
+      <section>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
