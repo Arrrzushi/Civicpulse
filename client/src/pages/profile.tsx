@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Coins, FileText, CheckCircle } from 'lucide-react';
+import ConnectWallet from '@/components/shared/ConnectWallet';
 
 export default function Profile() {
   const [principal, setPrincipal] = useState<string | null>(null);
