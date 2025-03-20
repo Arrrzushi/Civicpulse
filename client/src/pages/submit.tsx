@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { insertComplaintSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { submitComplaint } from "@/lib/icp";
+import { submitComplaint as submitComplaintToBlockchain } from "@/lib/icp"; // Renamed for clarity
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -103,21 +103,22 @@ export default function Submit() {
       const formData = {
         ...data,
         evidenceHash: evidenceUrl || "placeholder",
-        type: complaintType
+        type: complaintType,
+        walletAddress: window.ethereum?.selectedAddress
       };
 
-      if (selectedLocation) {
-        formData.latitude = selectedLocation.lat.toString();
-        formData.longitude = selectedLocation.lng.toString();
-      }
-
       try {
+        // Connect wallet if not connected
+        if (!window.ethereum?.selectedAddress) {
+          await connectWallet(); // Assumes connectWallet function exists
+        }
+
         // Submit to our backend first
         const response = await apiRequest("POST", "/api/complaints", formData);
 
-        // If it's a legal complaint, also store it on ICP
+        // Submit to blockchain
         if (complaintType === 'legal') {
-          await submitComplaint({
+          await submitComplaintToBlockchain({
             title: formData.title,
             description: formData.description,
             category: formData.category,
@@ -127,7 +128,8 @@ export default function Submit() {
             evidenceHash: formData.evidenceHash,
             privacy: formData.privacy,
             urgency: formData.urgency,
-            aiAnalysis: aiSuggestions?.analysis
+            aiAnalysis: aiSuggestions?.analysis,
+            walletAddress: window.ethereum?.selectedAddress //Added walletAddress
           });
 
           toast({
