@@ -117,25 +117,16 @@ export default function Submit() {
       };
 
       try {
-
         // Submit to our backend first
         const response = await apiRequest("POST", "/api/complaints", formData);
 
-        // Submit to blockchain
+        // Submit to blockchain if legal complaint
         if (complaintType === 'legal') {
-          await submitComplaintToBlockchain({
-            title: formData.title,
-            description: formData.description,
-            category: formData.category,
-            location: formData.location,
-            latitude: formData.latitude || "",
-            longitude: formData.longitude || "",
-            evidenceHash: formData.evidenceHash,
-            privacy: formData.privacy,
-            urgency: formData.urgency,
-            aiAnalysis: aiSuggestions?.analysis,
-            walletAddress: window.ethereum?.selectedAddress //Added walletAddress
-          });
+          await submitComplaintToBlockchain(
+            formData.title,
+            formData.description,
+            formData.evidenceHash
+          );
 
           toast({
             title: "ICP Transaction",
@@ -145,6 +136,7 @@ export default function Submit() {
 
         return response;
       } catch (error) {
+        console.error('Submission error:', error);
         if (error.message.includes("Internet Identity")) {
           throw new Error("Please ensure you're connected with Internet Identity and try again");
         }
