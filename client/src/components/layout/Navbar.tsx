@@ -20,24 +20,28 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <span className="text-2xl font-bold text-primary">CivicChain</span>
+              <span className="text-2xl font-bold text-primary">
+                CivicChain
+              </span>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {links.map(({ href, icon: Icon, label }) => (
-                <Link key={href} href={href}>
-                  <a className="relative inline-flex items-center px-1 pt-1 text-sm font-medium">
-                    <Icon className="w-5 h-5 mr-1" />
-                    {label}
-                    {location === href && (
-                      <motion.div
-                        layoutId="underline"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                        initial={false}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.2 }}
-                      />
-                    )}
-                  </a>
+                <Link
+                  key={href}
+                  href={href}
+                  className="relative inline-flex items-center px-1 pt-1 text-sm font-medium"
+                >
+                  <Icon className="w-5 h-5 mr-1" />
+                  {label}
+                  {location === href && (
+                    <motion.div
+                      layoutId="underline"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                      initial={false}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                    />
+                  )}
                 </Link>
               ))}
             </div>
