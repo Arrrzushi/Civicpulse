@@ -135,7 +135,7 @@ export async function registerRoutes(app: Express) {
     res.json(complaint);
   });
 
-  // AI Chat endpoint
+  // AI Chat endpoint - properly separated from donation endpoint
   app.post("/api/chat", async (req, res) => {
     const { message } = req.body;
     
