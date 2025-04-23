@@ -47,7 +47,8 @@ Respond with JSON containing all these fields.`
       response_format: { type: "json_object" }
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content || '{"isValid":true,"reason":"No valid response from AI"}';
+    const result = JSON.parse(content);
     return {
       isValid: result.isValid,
       reason: result.reason,

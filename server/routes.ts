@@ -166,7 +166,8 @@ export async function registerRoutes(app: Express) {
         ]
       });
 
-      res.json({ message: response.choices[0].message.content });
+      const content = response.choices[0].message.content || "I'm sorry, I couldn't process that request.";
+      res.json({ message: content });
     } catch (error) {
       console.error('Chat error:', error);
       res.status(500).json({ message: "Failed to process chat message" });
@@ -174,4 +175,4 @@ export async function registerRoutes(app: Express) {
   });
 
   return httpServer;
-}
+} 
