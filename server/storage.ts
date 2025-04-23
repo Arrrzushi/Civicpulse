@@ -35,14 +35,22 @@ export class MemStorage implements IStorage {
     return this.complaints.get(id);
   }
 
-  async createComplaint(complaint: InsertComplaint): Promise<Complaint> {
+  async createComplaint(complaint: InsertComplaint & { aiAnalysis?: string }): Promise<Complaint> {
     const id = this.complaintId++;
     const newComplaint: Complaint = {
       ...complaint,
       id,
-      status: "pending",
+      type: complaint.type || "community",
+      status: complaint.status || "pending",
+      privacy: complaint.privacy || "public",
+      urgency: complaint.urgency || "medium",
+      location: complaint.location || null,
+      latitude: complaint.latitude || null,
+      longitude: complaint.longitude || null,
       donations: 0,
       createdAt: new Date(),
+      aiAnalysis: complaint.aiAnalysis || null,
+      assignedTo: null
     };
     this.complaints.set(id, newComplaint);
     return newComplaint;

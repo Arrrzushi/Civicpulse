@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer } from "http";
-import { openai } from "./services/openai";
+import { openai, isOpenAIAvailable } from "./services/openai";
 import { storage } from "./storage";
-import { insertComplaintSchema, insertUserSchema } from "@shared/schema";
+import { insertComplaintSchema, insertUserSchema, type InsertComplaint } from "@shared/schema";
 import { validateLegalComplaint } from "./services/validation";
 
 export async function registerRoutes(app: Express) {
@@ -41,12 +41,19 @@ export async function registerRoutes(app: Express) {
           });
         }
 
-        complaint = await storage.createComplaint({
+        // Create the complaint with validated data
+        // Type cast to allow additional fields beyond the insert schema
+        const complaintData = {
           ...result.data,
-          aiAnalysis: validation.analysis,
           urgency: validation.suggestedUrgency || "medium",
           privacy: validation.suggestedPrivacy || result.data.privacy || "public"
-        });
+        } as InsertComplaint & { aiAnalysis?: string };
+        
+        if (validation.analysis) {
+          complaintData.aiAnalysis = validation.analysis;
+        }
+        
+        complaint = await storage.createComplaint(complaintData);
       } else {
         // For community complaints, create without validation
         complaint = await storage.createComplaint(result.data);
@@ -115,10 +122,30 @@ export async function registerRoutes(app: Express) {
   app.post("/api/complaints/:id/donate", async (req, res) => {
     const { amount, walletAddress } = req.body;
 
+    if (typeof amount !== "number" || amount <= 0) {
+      return res.status(400).json({ message: "Invalid donation amount" });
+    }
+
+    const complaint = await storage.addDonation(parseInt(req.params.id), amount);
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    await storage.updateUserTokens(walletAddress, -amount);
+    res.json(complaint);
+  });
 
   // AI Chat endpoint
   app.post("/api/chat", async (req, res) => {
     const { message } = req.body;
+    
+    // Check if OpenAI is available
+    if (!isOpenAIAvailable()) {
+      return res.json({ 
+        message: "AI chat is not available in development mode. Please add your OpenAI API key to the .env file."
+      });
+    }
+    
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-4",
@@ -144,20 +171,6 @@ export async function registerRoutes(app: Express) {
       console.error('Chat error:', error);
       res.status(500).json({ message: "Failed to process chat message" });
     }
-  });
-
-
-    if (typeof amount !== "number" || amount <= 0) {
-      return res.status(400).json({ message: "Invalid donation amount" });
-    }
-
-    const complaint = await storage.addDonation(parseInt(req.params.id), amount);
-    if (!complaint) {
-      return res.status(404).json({ message: "Complaint not found" });
-    }
-
-    await storage.updateUserTokens(walletAddress, -amount);
-    res.json(complaint);
   });
 
   return httpServer;

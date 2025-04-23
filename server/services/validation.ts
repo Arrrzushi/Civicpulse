@@ -1,7 +1,6 @@
-import OpenAI from "openai";
+import { openai, isOpenAIAvailable } from "./openai";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
-const openai = new OpenAI();
 
 export async function validateLegalComplaint(title: string, description: string, category: string): Promise<{
   isValid: boolean;
@@ -10,6 +9,18 @@ export async function validateLegalComplaint(title: string, description: string,
   suggestedUrgency?: string;
   suggestedPrivacy?: string;
 }> {
+  // If OpenAI is not available, return a default response
+  if (!isOpenAIAvailable()) {
+    console.log('OpenAI validation skipped - API key not available');
+    return {
+      isValid: true,
+      reason: "Validation skipped - Development mode",
+      analysis: "No analysis available in development mode",
+      suggestedUrgency: "medium",
+      suggestedPrivacy: "public"
+    };
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
